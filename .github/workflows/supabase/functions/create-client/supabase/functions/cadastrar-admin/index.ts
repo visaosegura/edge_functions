@@ -17,7 +17,7 @@ Deno.serve(async (req)=>{
       }
     });
     const dados = await req.json();
-    console.log('=== INICIANDO CADASTRO DE ADMIN ===');
+    console.log('=== INICIANDO CADASTRON DE ADMIN ===');
     console.log('📧 Email:', dados.email);
     if (!dados.senha) {
       throw new Error('Senha é obrigatória para criar a conta');
