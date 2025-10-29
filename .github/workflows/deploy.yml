@@ -1,0 +1,21 @@
+name: Deploy Supabase Edge Functions
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy all Edge Functions
+        run: supabase functions deploy --project-ref dqiripuqzkikppmyfyuu
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{sbp_6a7fcb8fcc7753665aa5700e1e8f226b6fb69dae}}
