@@ -17,10 +17,10 @@ Deno.serve(async (req)=>{
       }
     });
     const dados = await req.json();
-    console.log('=== INICIANDO CADASTRON DE ADMIN ===');
+    console.log('=== INICIANDO CADASTRO DE ADMIN ===');
     console.log('📧 Email:', dados.email);
-    if (!dados.senha) {
-      throw new Error('Senha é obrigatória para criar a conta');
+    if (!dados.senha || dados.senha.length < 8) {
+      throw new Error('Senha deve ter no mínimo 8 caracteres');
     }
     // PASSO 1: Criar CONTATO
     console.log('📝 Criando contato...');
@@ -52,39 +52,33 @@ Deno.serve(async (req)=>{
       throw new Error(`Erro ao salvar endereço: ${enderecoError.message}`);
     }
     console.log('✅ Endereço criado:', endereco.id_endereco);
-    // PASSO 3: Criar usuário via signUp
+    // PASSO 3: Criar usuário via signUp com emailRedirectTo
     console.log('📝 Criando usuário via signUp...');
-    // ✅ CORREÇÃO: Não passar options no body do signUp
-    // O redirect_to será configurado no Supabase Dashboard
-    const signUpResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/auth/v1/signup`, {
-      method: 'POST',
-      headers: {
-        'apikey': Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        email: dados.email.toLowerCase().trim(),
-        password: dados.senha,
+    const { data: signUpData, error: signUpError } = await supabaseAdmin.auth.signUp({
+      email: dados.email.toLowerCase().trim(),
+      password: dados.senha,
+      options: {
         data: {
           razao_nome: dados.razaoSocial.trim(),
           cpf_cnpj: dados.cnpj.replace(/\D/g, ''),
           tipo_pessoa: 'juridica',
           tipo_cliente: 'admin',
           id_contato: contato.id_contato,
-          id_endereco: endereco.id_endereco
-        }
-      })
+          id_endereco: endereco.id_endereco,
+          area_atuacao: dados.areaAtuacao
+        },
+        emailRedirectTo: `${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/auth/callback`
+      }
     });
-    const signUpData = await signUpResponse.json();
-    if (!signUpResponse.ok) {
-      console.error('❌ Erro ao criar usuário:', signUpData);
+    if (signUpError) {
+      console.error('❌ Erro ao criar usuário:', signUpError);
       // Rollback
       await supabaseAdmin.from('contato').delete().eq('id_contato', contato.id_contato);
       await supabaseAdmin.from('endereco').delete().eq('id_endereco', endereco.id_endereco);
-      if (signUpData.msg?.includes('already registered') || signUpData.error_description?.includes('already registered')) {
+      if (signUpError.message.includes('already registered')) {
         throw new Error('Este email já está cadastrado');
       }
-      throw new Error(signUpData.msg || signUpData.error_description || 'Erro ao criar conta');
+      throw new Error(signUpError.message);
     }
     console.log('✅ Usuário criado:', signUpData.user?.id);
     console.log('✅ Email de confirmação enviado');
